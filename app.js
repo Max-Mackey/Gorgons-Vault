@@ -26,6 +26,10 @@
   const resultsList = $('resultsList');
   const noMatches = $('noMatches');
   const cdnError = $('cdnError');
+  const storageSaverBtn = $('storageSaverBtn');
+  const storageSaverStatus = $('storageSaverStatus');
+  const storageSaverResults = $('storageSaverResults');
+  const PANEL_ID = 'data-panel';
 
   function setStatus(msg) {
     dataStatus.textContent = msg;
@@ -399,15 +403,134 @@
     submitBtn.addEventListener('click', runMatch);
     itemsFiles.addEventListener('change', onItemsFilesChange);
     characterFiles.addEventListener('change', onCharacterFilesChange);
+    initTabs();
   }
 
   function enableSubmit() {
     submitBtn.disabled = false;
   }
 
+  function switchTab(panelId) {
+    document.querySelectorAll('.feature-tabs .tab').forEach((t) => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.feature-panel').forEach((p) => {
+      p.classList.add('hidden');
+    });
+    const tab = document.querySelector('.feature-tabs .tab[data-panel="' + panelId + '"]');
+    const panel = $(panelId);
+    if (tab) {
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+    }
+    if (panel) {
+      panel.classList.remove('hidden');
+    }
+  }
+
+  function getFirstCharacterItems() {
+    const names = Object.keys(charactersItems);
+    return names.length ? charactersItems[names[0]] : null;
+  }
+
+  function runStorageSaver() {
+    const userItems = getFirstCharacterItems();
+    storageSaverResults.hidden = true;
+    storageSaverResults.innerHTML = '';
+    if (!userItems || !userItems.length) {
+      storageSaverStatus.textContent = 'Load an items export above first.';
+      return;
+    }
+    storageSaverStatus.textContent = 'Finding duplicate stacks…';
+    const byTypeId = {};
+    for (const row of userItems) {
+      const id = row.TypeID;
+      if (!byTypeId[id]) byTypeId[id] = { name: row.Name || 'Unknown', vaults: [] };
+      byTypeId[id].vaults.push({
+        vault: row.StorageVault || 'Unknown',
+        stack: row.StackSize ?? 1,
+      });
+    }
+    const duplicates = [];
+    for (const [typeId, data] of Object.entries(byTypeId)) {
+      if (data.vaults.length < 2) continue;
+      const cdnItem = getCdnItem(Number(typeId));
+      const name = (cdnItem && cdnItem.Name) ? cdnItem.Name : data.name;
+      const maxStack = (cdnItem && cdnItem.MaxStackSize != null) ? cdnItem.MaxStackSize : 100;
+      let total = 0;
+      const slotsUsed = data.vaults.length;
+      for (const v of data.vaults) total += v.stack;
+      const slotsNeeded = Math.ceil(total / maxStack);
+      const slotsSaveable = Math.max(0, slotsUsed - slotsNeeded);
+      if (slotsSaveable === 0) continue;
+      const iconId = (cdnItem && cdnItem.IconId != null) ? cdnItem.IconId : null;
+      duplicates.push({
+        typeId,
+        name,
+        iconId,
+        vaults: data.vaults,
+        total,
+        maxStack,
+        slotsSaveable,
+      });
+    }
+    duplicates.sort((a, b) => b.slotsSaveable - a.slotsSaveable || a.name.localeCompare(b.name));
+    storageSaverStatus.textContent = '';
+    if (duplicates.length === 0) {
+      storageSaverResults.hidden = false;
+      const p = document.createElement('p');
+      p.className = 'no-duplicates';
+      p.textContent = 'No consolidatable duplicate stacks found. Items that could save slots when merged are not split across multiple vaults.';
+      storageSaverResults.appendChild(p);
+      return;
+    }
+    storageSaverResults.hidden = false;
+    for (const d of duplicates) {
+      const block = document.createElement('div');
+      block.className = 'storage-saver-item';
+      const header = document.createElement('div');
+      header.className = 'storage-saver-item-header';
+      if (d.iconId != null) {
+        const img = document.createElement('img');
+        img.src = CDN_ICONS_BASE + '/icon_' + d.iconId + '.png';
+        img.alt = '';
+        img.className = 'item-icon';
+        header.appendChild(img);
+      }
+      const h3 = document.createElement('h3');
+      h3.textContent = d.name;
+      header.appendChild(h3);
+      block.appendChild(header);
+      const saveP = document.createElement('p');
+      saveP.className = 'save-count';
+      saveP.textContent = 'You could save ' + d.slotsSaveable + ' slot(s) by consolidating.';
+      block.appendChild(saveP);
+      const ul = document.createElement('ul');
+      for (const v of d.vaults) {
+        const li = document.createElement('li');
+        const mapName = vaultCityHeading(v.vault) || 'Other';
+        li.textContent = mapName + ': ' + vaultFriendlyName(v.vault) + ' — ' + v.stack;
+        ul.appendChild(li);
+      }
+      block.appendChild(ul);
+      storageSaverResults.appendChild(block);
+    }
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  function initTabs() {
+    document.querySelectorAll('.feature-tabs .tab').forEach((t) => {
+      t.addEventListener('click', () => {
+        const panelId = t.getAttribute(PANEL_ID);
+        if (panelId) switchTab(panelId);
+      });
+    });
+    if (storageSaverBtn) storageSaverBtn.addEventListener('click', runStorageSaver);
   }
 })();

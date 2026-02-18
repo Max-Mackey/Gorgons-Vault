@@ -1,0 +1,7 @@
+# Game export files (reference only; users load their own via the app)
+Character_*.json
+*_items_*.json
+
+# Plan / Cursor artifacts (do not commit)
+.cursor/
+*.plan.md

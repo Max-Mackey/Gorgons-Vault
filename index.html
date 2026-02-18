@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Favor Item Finder — Project Gorgon</title>
+  <title>Project Gorgon Tools</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>Favor Item Finder</h1>
-    <p class="subtitle">Find which of your items you can give to an NPC for favor (Love vs Like).</p>
+    <h1>Project Gorgon Tools</h1>
+    <p class="subtitle">Favor finder, storage saver, and more. Load your data once, use every feature.</p>
   </header>
 
   <main>
@@ -28,31 +28,64 @@
       <p id="dataStatus" class="status" aria-live="polite"></p>
     </section>
 
-    <section class="selectors">
-      <h2>Select NPC</h2>
-      <div class="dropdowns">
-        <label>
-          <span>Map</span>
-          <select id="mapSelect" disabled>
-            <option value="">— Loading CDN… —</option>
-          </select>
-        </label>
-        <label>
-          <span>NPC</span>
-          <select id="npcSelect" disabled>
-            <option value="">— Choose a map first —</option>
-          </select>
-        </label>
-      </div>
-      <button type="button" id="submitBtn" disabled>Show my giftable items</button>
-    </section>
+    <nav class="feature-tabs" role="tablist" aria-label="Features">
+      <button type="button" class="tab active" role="tab" id="tabFavor" aria-selected="true" aria-controls="panelFavor" data-panel="panelFavor">Favor Finder</button>
+      <button type="button" class="tab" role="tab" id="tabStorage" aria-selected="false" aria-controls="panelStorage" data-panel="panelStorage">Storage Saver</button>
+      <button type="button" class="tab" role="tab" id="tabInventory" aria-selected="false" aria-controls="panelInventory" data-panel="panelInventory">Full Inventory</button>
+      <button type="button" class="tab" role="tab" id="tabMods" aria-selected="false" aria-controls="panelMods" data-panel="panelMods">Mod Finder</button>
+    </nav>
 
-    <section class="results" id="resultsSection" aria-live="polite" hidden>
-      <h2>Results</h2>
-      <div id="npcFavor" class="npc-favor"></div>
-      <div id="resultsList" class="results-list"></div>
-      <p id="noMatches" class="no-matches" hidden>No items in your inventory match this NPC’s likes or loves.</p>
-    </section>
+    <div id="panelFavor" class="feature-panel" role="tabpanel" aria-labelledby="tabFavor">
+      <section class="selectors">
+        <h2>Select NPC</h2>
+        <div class="dropdowns">
+          <label>
+            <span>Map</span>
+            <select id="mapSelect" disabled>
+              <option value="">— Loading CDN… —</option>
+            </select>
+          </label>
+          <label>
+            <span>NPC</span>
+            <select id="npcSelect" disabled>
+              <option value="">— Choose a map first —</option>
+            </select>
+          </label>
+        </div>
+        <button type="button" id="submitBtn" disabled>Show my giftable items</button>
+      </section>
+
+      <section class="results" id="resultsSection" aria-live="polite" hidden>
+        <h2>Results</h2>
+        <div id="npcFavor" class="npc-favor"></div>
+        <div id="resultsList" class="results-list"></div>
+        <p id="noMatches" class="no-matches" hidden>No items in your inventory match this NPC's likes or loves.</p>
+      </section>
+    </div>
+
+    <div id="panelStorage" class="feature-panel hidden" role="tabpanel" aria-labelledby="tabStorage">
+      <section class="storage-saver">
+        <h2>Storage Saver</h2>
+        <p class="panel-desc">Find items split across multiple vaults so you can consolidate stacks and save slots.</p>
+        <button type="button" id="storageSaverBtn" class="primary-btn">Find duplicate stacks</button>
+        <div id="storageSaverStatus" class="status" aria-live="polite"></div>
+        <div id="storageSaverResults" class="storage-saver-results" hidden></div>
+      </section>
+    </div>
+
+    <div id="panelInventory" class="feature-panel hidden" role="tabpanel" aria-labelledby="tabInventory">
+      <section class="stub-panel">
+        <h2>Full Inventory</h2>
+        <p class="stub-message">Browse all your items by category (e.g. equipment, potions, gardening). Coming soon.</p>
+      </section>
+    </div>
+
+    <div id="panelMods" class="feature-panel hidden" role="tabpanel" aria-labelledby="tabMods">
+      <section class="stub-panel">
+        <h2>Mod Finder</h2>
+        <p class="stub-message">Find mods by skill. Coming soon.</p>
+      </section>
+    </div>
 
     <section id="cdnError" class="cdn-error" hidden>
       <h2>CDN data could not be loaded</h2>
