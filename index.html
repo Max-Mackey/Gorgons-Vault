@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Favor Item Finder — Project Gorgon</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Favor Item Finder</h1>
+    <p class="subtitle">Find which of your items you can give to an NPC for favor (Love vs Like).</p>
+  </header>
+
+  <main>
+    <section class="data-load">
+      <h2>Your data</h2>
+      <div class="file-inputs">
+        <label>
+          <span>Items export</span>
+          <input type="file" id="itemsFiles" accept=".json" />
+        </label>
+        <label>
+          <span>Character sheet (optional, for current favor)</span>
+          <input type="file" id="characterFiles" accept=".json" />
+        </label>
+      </div>
+      <p id="dataStatus" class="status" aria-live="polite"></p>
+    </section>
+
+    <section class="selectors">
+      <h2>Select NPC</h2>
+      <div class="dropdowns">
+        <label>
+          <span>Map</span>
+          <select id="mapSelect" disabled>
+            <option value="">— Loading CDN… —</option>
+          </select>
+        </label>
+        <label>
+          <span>NPC</span>
+          <select id="npcSelect" disabled>
+            <option value="">— Choose a map first —</option>
+          </select>
+        </label>
+      </div>
+      <button type="button" id="submitBtn" disabled>Show my giftable items</button>
+    </section>
+
+    <section class="results" id="resultsSection" aria-live="polite" hidden>
+      <h2>Results</h2>
+      <div id="npcFavor" class="npc-favor"></div>
+      <div id="resultsList" class="results-list"></div>
+      <p id="noMatches" class="no-matches" hidden>No items in your inventory match this NPC’s likes or loves.</p>
+    </section>
+
+    <section id="cdnError" class="cdn-error" hidden>
+      <h2>CDN data could not be loaded</h2>
+      <p>If you see this, cross-origin requests may be blocked. Save <code>npcs.json</code>, <code>items.json</code>, <code>storagevaults.json</code>, and <code>areas.json</code> from the <a href="https://cdn.projectgorgon.com/v457/data/" target="_blank" rel="noopener">CDN data</a> into a <code>data/</code> folder next to this file, then serve the folder with a local server (e.g. <code>npx serve</code> or <code>python -m http.server</code>).</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Some portions copyright <span id="copyrightYear"></span> Elder Game, LLC.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

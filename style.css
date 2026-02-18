@@ -1,0 +1,321 @@
+/* Favor Item Finder — Project Gorgon */
+
+:root {
+  --bg: #1a1b26;
+  --surface: #24283b;
+  --text: #c0caf5;
+  --muted: #565f89;
+  --accent: #7aa2f7;
+  --love: #f7768e;
+  --like: #9ece6a;
+  --border: #3b4261;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 1rem 1.5rem;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+header {
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+main {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+section {
+  margin-bottom: 1.75rem;
+}
+
+section h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.data-load .file-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.data-load label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.data-load label span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.data-load input[type="file"] {
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.data-load input[type="file"]::file-selector-button {
+  margin-right: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.status {
+  font-size: 0.9rem;
+  color: var(--muted);
+  min-height: 1.4em;
+}
+
+.selectors .dropdowns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.selectors label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.selectors label span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.selectors select {
+  padding: 0.5rem 0.65rem;
+  min-width: 12rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.selectors select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#submitBtn {
+  padding: 0.6rem 1.2rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#submitBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+#submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.results h2 {
+  margin-bottom: 0.5rem;
+}
+
+.npc-favor {
+  margin-bottom: 1rem;
+}
+
+.npc-favor .favor-level {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.npc-favor .favor-unknown {
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.city-group {
+  margin-bottom: 1.5rem;
+}
+
+.city-group:last-child {
+  margin-bottom: 0;
+}
+
+.city-heading {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.vault-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.vault-block .vault-city {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vault-block .vault-name {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.vault-block h3:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.desire-section {
+  margin-bottom: 0.75rem;
+}
+
+.desire-section:last-child {
+  margin-bottom: 0;
+}
+
+.desire-section h4 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.desire-section.love h4 {
+  color: var(--love);
+}
+
+.desire-section.like h4 {
+  color: var(--like);
+}
+
+.desire-section ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.desire-section li {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.item-text {
+  flex: 1;
+}
+
+
+.no-matches {
+  color: var(--muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.cdn-error {
+  background: var(--surface);
+  border: 1px solid var(--love);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.cdn-error h2 {
+  color: var(--love);
+  margin-top: 0;
+}
+
+.cdn-error code {
+  background: var(--bg);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.cdn-error a {
+  color: var(--accent);
+}
+
+footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+footer p {
+  margin: 0;
+}
