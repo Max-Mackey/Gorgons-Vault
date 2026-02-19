@@ -12,6 +12,8 @@
   let attributes = {};
   let tsysClientInfo = {};
   let tsysByInternalName = {};
+  let skills = {};
+  let abilities = {};
   let charactersItems = {};
   let charactersSheets = {};
   let giftableNpcs = [];
@@ -35,7 +37,16 @@
   const fullInventoryEmpty = $('fullInventoryEmpty');
   const fullInventoryResults = $('fullInventoryResults');
   const fullInventoryCategory = $('fullInventoryCategory');
+  const backToTopBtn = $('backToTop');
+  const modFinderSkill1 = $('modFinderSkill1');
+  const modFinderSkill2 = $('modFinderSkill2');
+  const modFinderSlotCheckboxes = $('modFinderSlotCheckboxes');
+  const modFinderEmpty = $('modFinderEmpty');
+  const modFinderResults = $('modFinderResults');
+  const MOD_SLOT_FILTER_OTHER = '__other__';
   const PANEL_ID = 'data-panel';
+
+  const MOD_SLOT_ORDER = ['Head', 'Chest', 'Hands', 'MainHand', 'OffHand', 'Legs', 'Feet'];
 
   const FULL_INVENTORY_CATEGORY_ORDER = [
     'Equipment', 'Skill Book', 'Recipe', 'Work Order', 'Consumables', 'Potions', 'Gardening', 'Ingredients',
@@ -143,6 +154,24 @@
     for (const entry of Object.values(tsysClientInfo)) {
       if (entry && entry.InternalName) {
         tsysByInternalName[entry.InternalName] = entry;
+      }
+    }
+    try {
+      skills = await fetchJson(tryUrl(CDN_BASE, 'skills.json'));
+    } catch (e) {
+      try {
+        skills = await fetchJson(tryUrl(DATA_BASE, 'skills.json'));
+      } catch (e2) {
+        skills = {};
+      }
+    }
+    try {
+      abilities = await fetchJson(tryUrl(CDN_BASE, 'abilities.json'));
+    } catch (e) {
+      try {
+        abilities = await fetchJson(tryUrl(DATA_BASE, 'abilities.json'));
+      } catch (e2) {
+        abilities = {};
       }
     }
     buildGiftableNpcsAndMaps();
@@ -346,6 +375,29 @@
     return li;
   }
 
+  function npcWikiUrl(displayName) {
+    if (!displayName || typeof displayName !== 'string') return null;
+    const slug = displayName.trim().replace(/\s+/g, '_');
+    return 'https://wiki.projectgorgon.com/wiki/' + encodeURIComponent(slug);
+  }
+
+  function appendFavorLine(parent, npcDisplayName, suffix) {
+    parent.appendChild(document.createTextNode('Current favor with '));
+    const url = npcWikiUrl(npcDisplayName);
+    if (url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.className = 'npc-wiki-link';
+      a.textContent = npcDisplayName;
+      parent.appendChild(a);
+    } else {
+      parent.appendChild(document.createTextNode(npcDisplayName));
+    }
+    parent.appendChild(document.createTextNode(suffix));
+  }
+
   function renderResults(npcDisplayName, favorLevel, matches) {
     resultsSection.hidden = false;
     noMatches.hidden = matches.length > 0;
@@ -356,12 +408,12 @@
     if (favorLevel) {
       const favorP = document.createElement('p');
       favorP.className = 'favor-level';
-      favorP.textContent = 'Current favor with ' + npcDisplayName + ': ' + favorLevel;
+      appendFavorLine(favorP, npcDisplayName, ': ' + favorLevel);
       npcFavorEl.appendChild(favorP);
     } else {
       const favorP = document.createElement('p');
       favorP.className = 'favor-level favor-unknown';
-      favorP.textContent = 'Current favor with ' + npcDisplayName + ': load character sheet to see';
+      appendFavorLine(favorP, npcDisplayName, ': load character sheet to see');
       npcFavorEl.appendChild(favorP);
     }
     resultsList.innerHTML = '';
@@ -439,6 +491,8 @@
         npcSelect.disabled = true;
         cdnError.hidden = true;
         enableSubmit();
+        populateModFinderSkillDropdowns();
+        buildModFinderSlotFilter();
       })
       .catch((err) => {
         mapSelect.innerHTML = '<option value="">— CDN failed —</option>';
@@ -583,6 +637,212 @@
       }
     }
     return out;
+  }
+
+  function getCombatSkillsList() {
+    return Object.entries(skills)
+      .filter(([, s]) => s && s.Combat === true)
+      .map(([key, s]) => ({ key, name: (s.Name || key).trim() || key }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function getAbilitiesForSkill(skillKey) {
+    if (!skillKey) return [];
+    const list = Object.entries(abilities)
+      .filter(([, a]) => a && a.Skill === skillKey && !(a.Keywords || []).includes('Lint_MonsterAbility'))
+      .map(([key, a]) => ({ key, name: (a.Name || '').trim() || key, iconId: a.IconID }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const byName = new Map();
+    for (const item of list) {
+      if (!byName.has(item.name)) byName.set(item.name, item);
+    }
+    return Array.from(byName.values());
+  }
+
+  function filterModsBySkills(skill1, skill2) {
+    const skillSet = new Set([skill1, skill2].filter(Boolean));
+    if (skillSet.size === 0) return [];
+    return Object.values(tsysClientInfo).filter(
+      (entry) => entry && entry.Skill && skillSet.has(entry.Skill)
+    );
+  }
+
+  function groupModsBySlot(modEntries) {
+    const bySlot = {};
+    for (const entry of modEntries) {
+      const slots = entry.Slots || [];
+      for (const slot of slots) {
+        if (!bySlot[slot]) bySlot[slot] = [];
+        bySlot[slot].push(entry);
+      }
+    }
+    return bySlot;
+  }
+
+  function getFirstTierKey(entry) {
+    const tiers = entry.Tiers && typeof entry.Tiers === 'object' ? entry.Tiers : {};
+    const keys = Object.keys(tiers);
+    if (keys.length === 0) return null;
+    const numeric = keys.map((k) => parseInt(k.replace('id_', ''), 10)).filter((n) => !Number.isNaN(n));
+    if (numeric.length === 0) return keys[0];
+    return 'id_' + Math.min(...numeric);
+  }
+
+  let abilityInternalNameToIconId = null;
+  function getAbilityInternalNameToIconIdMap() {
+    if (abilityInternalNameToIconId) return abilityInternalNameToIconId;
+    abilityInternalNameToIconId = {};
+    for (const [key, a] of Object.entries(abilities)) {
+      if (!a || a.IconID == null) continue;
+      const name = (a.InternalName != null ? a.InternalName : key);
+      if (typeof name === 'string' && name) {
+        abilityInternalNameToIconId[name.toUpperCase()] = a.IconID;
+      }
+    }
+    return abilityInternalNameToIconId;
+  }
+
+  function getModAbilityIconId(entry) {
+    const tierKey = getFirstTierKey(entry);
+    if (!tierKey || !entry.Tiers || !entry.Tiers[tierKey] || !Array.isArray(entry.Tiers[tierKey].EffectDescs)) return null;
+    const map = getAbilityInternalNameToIconIdMap();
+    for (const s of entry.Tiers[tierKey].EffectDescs) {
+      if (typeof s !== 'string') continue;
+      const m = s.match(/\{MOD_ABILITY_([^}]+)\}/);
+      if (m) {
+        const iconId = map[m[1].toUpperCase()];
+        return iconId != null ? iconId : null;
+      }
+    }
+    return null;
+  }
+
+  function getSelectedSlotFilter() {
+    if (!modFinderSlotCheckboxes) return null;
+    const checked = Array.from(modFinderSlotCheckboxes.querySelectorAll('input[type="checkbox"]:checked'))
+      .map((el) => el.value);
+    return checked.length === 0 ? null : checked;
+  }
+
+  function renderModFinderResults() {
+    if (!modFinderResults || !modFinderEmpty) return;
+    modFinderResults.innerHTML = '';
+    modFinderResults.hidden = true;
+    modFinderEmpty.hidden = true;
+    const skill1 = modFinderSkill1 && modFinderSkill1.value ? modFinderSkill1.value : '';
+    const skill2 = modFinderSkill2 && modFinderSkill2.value ? modFinderSkill2.value : '';
+    const mods = filterModsBySkills(skill1, skill2);
+    if (mods.length === 0) {
+      modFinderEmpty.textContent = skill1 || skill2 ? 'No mods found for the selected skill(s).' : 'Select one or two combat skills to see mods.';
+      modFinderEmpty.hidden = false;
+      return;
+    }
+    const bySlot = groupModsBySlot(mods);
+    const orderedSlots = [...MOD_SLOT_ORDER];
+    const otherSlots = Object.keys(bySlot).filter((s) => !orderedSlots.includes(s));
+    let slotOrder = [...orderedSlots.filter((s) => bySlot[s]), ...otherSlots];
+    const selectedSlots = getSelectedSlotFilter();
+    if (selectedSlots) {
+      const wantOther = selectedSlots.includes(MOD_SLOT_FILTER_OTHER);
+      const wantNamed = new Set(selectedSlots.filter((s) => s !== MOD_SLOT_FILTER_OTHER));
+      slotOrder = slotOrder.filter((slot) => {
+        if (wantNamed.has(slot)) return true;
+        if (wantOther && !MOD_SLOT_ORDER.includes(slot)) return true;
+        return false;
+      });
+    }
+    const grid = document.createElement('div');
+    grid.className = 'mod-finder-results-grid';
+    for (const slot of slotOrder) {
+      const section = document.createElement('section');
+      section.className = 'mod-finder-slot-section';
+      const h3 = document.createElement('h3');
+      h3.textContent = slot;
+      section.appendChild(h3);
+      const list = document.createElement('ul');
+      list.className = 'mod-finder-mod-list';
+      for (const entry of bySlot[slot]) {
+        const li = document.createElement('li');
+        li.className = 'mod-finder-mod-item';
+        const modIconId = getModAbilityIconId(entry);
+        if (modIconId != null) {
+          const iconImg = document.createElement('img');
+          iconImg.src = CDN_ICONS_BASE + '/icon_' + modIconId + '.png';
+          iconImg.alt = '';
+          iconImg.className = 'mod-finder-mod-icon';
+          li.appendChild(iconImg);
+        }
+        const content = document.createElement('div');
+        content.className = 'mod-finder-mod-content';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'mod-finder-mod-name';
+        nameSpan.textContent = entry.Suffix || entry.InternalName || 'Unknown';
+        content.appendChild(nameSpan);
+        const tierKey = getFirstTierKey(entry);
+        if (tierKey && entry.Tiers[tierKey] && Array.isArray(entry.Tiers[tierKey].EffectDescs)) {
+          const rawDescs = formatEffectDescsForDisplay(entry.Tiers[tierKey].EffectDescs, attributes);
+          for (const line of rawDescs) {
+            const effectLine = document.createElement('div');
+            effectLine.className = 'mod-finder-mod-effect';
+            appendTextWithIcons(effectLine, line);
+            content.appendChild(effectLine);
+          }
+        }
+        li.appendChild(content);
+        list.appendChild(li);
+      }
+      section.appendChild(list);
+      grid.appendChild(section);
+    }
+    modFinderResults.appendChild(grid);
+    modFinderResults.hidden = false;
+  }
+
+  function populateModFinderSkillDropdowns() {
+    const list = getCombatSkillsList();
+    const opts = (sel) => {
+      sel.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '— Select skill —';
+      sel.appendChild(empty);
+      list.forEach(({ key, name }) => {
+        const o = document.createElement('option');
+        o.value = key;
+        o.textContent = name;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+    };
+    if (modFinderSkill1) opts(modFinderSkill1);
+    if (modFinderSkill2) opts(modFinderSkill2);
+  }
+
+  function buildModFinderSlotFilter() {
+    if (!modFinderSlotCheckboxes) return;
+    modFinderSlotCheckboxes.innerHTML = '';
+    for (const slot of MOD_SLOT_ORDER) {
+      const label = document.createElement('label');
+      label.className = 'mod-finder-slot-checkbox-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = slot;
+      cb.name = 'modFinderSlot';
+      cb.setAttribute('aria-label', 'Slot: ' + slot);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + slot));
+      modFinderSlotCheckboxes.appendChild(label);
+    }
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'mod-finder-slot-checkbox-label';
+    const otherCb = document.createElement('input');
+    otherCb.type = 'checkbox';
+    otherCb.value = MOD_SLOT_FILTER_OTHER;
+    otherCb.name = 'modFinderSlot';
+    otherCb.setAttribute('aria-label', 'Other slots');
+    otherLabel.appendChild(otherCb);
+    otherLabel.appendChild(document.createTextNode(' Other'));
+    modFinderSlotCheckboxes.appendChild(otherLabel);
   }
 
   function buildFullInventory() {
@@ -853,6 +1113,11 @@
       return;
     }
     storageSaverResults.hidden = false;
+    const totalSlots = duplicates.reduce((sum, d) => sum + d.slotsSaveable, 0);
+    const totalDiv = document.createElement('div');
+    totalDiv.className = 'storage-saver-total';
+    totalDiv.textContent = 'You could save ' + totalSlots + ' slot(s) total by consolidating the items below.';
+    storageSaverResults.appendChild(totalDiv);
     for (const d of duplicates) {
       const block = document.createElement('div');
       block.className = 'storage-saver-item';
@@ -901,6 +1166,28 @@
     if (storageSaverBtn) storageSaverBtn.addEventListener('click', runStorageSaver);
     if (fullInventoryCategory) {
       fullInventoryCategory.addEventListener('change', renderFullInventory);
+    }
+    if (modFinderSkill1) {
+      modFinderSkill1.addEventListener('change', renderModFinderResults);
+    }
+    if (modFinderSkill2) {
+      modFinderSkill2.addEventListener('change', renderModFinderResults);
+    }
+    if (modFinderSlotCheckboxes) {
+      modFinderSlotCheckboxes.addEventListener('change', (e) => {
+        if (e.target && e.target.matches('input[type="checkbox"]')) renderModFinderResults();
+      });
+    }
+    if (backToTopBtn) {
+      backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      const scrollThreshold = 200;
+      function toggleBackToTop() {
+        backToTopBtn.hidden = window.scrollY < scrollThreshold;
+      }
+      window.addEventListener('scroll', toggleBackToTop, { passive: true });
+      toggleBackToTop();
     }
   }
 })();

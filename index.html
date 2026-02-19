@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project Gorgon Tools</title>
+  <title>Gorgon's Vault</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>Project Gorgon Tools</h1>
+    <h1>Gorgons's Vault</h1>
     <p class="subtitle">Favor finder, storage saver, and more. Load your data once, use every feature.</p>
   </header>
 
@@ -91,21 +91,45 @@
     </div>
 
     <div id="panelMods" class="feature-panel hidden" role="tabpanel" aria-labelledby="tabMods">
-      <section class="stub-panel">
+      <section class="mod-finder-panel">
         <h2>Mod Finder</h2>
-        <p class="stub-message">Find mods by skill. Coming soon.</p>
+        <p class="panel-desc">Pick one or two combat skills to see all mods for those skills, grouped by equipment slot. Use the slot filter to show only certain slots.</p>
+        <div class="mod-finder-controls">
+          <div class="mod-finder-row-selectors">
+            <label>
+              <span>Skill 1</span>
+              <select id="modFinderSkill1" aria-label="Combat skill 1" disabled>
+                <option value="">— Loading… —</option>
+              </select>
+            </label>
+            <label>
+              <span>Skill 2</span>
+              <select id="modFinderSkill2" aria-label="Combat skill 2" disabled>
+                <option value="">— Loading… —</option>
+              </select>
+            </label>
+          </div>
+          <fieldset id="modFinderSlotFilter" class="mod-finder-slot-filter" aria-label="Filter by equipment slot">
+            <legend>Slots</legend>
+            <div class="mod-finder-slot-checkboxes" id="modFinderSlotCheckboxes"></div>
+          </fieldset>
+        </div>
+        <p id="modFinderEmpty" class="status" aria-live="polite" hidden>Select one or two combat skills to see mods.</p>
+        <div id="modFinderResults" class="mod-finder-results" hidden></div>
       </section>
     </div>
 
     <section id="cdnError" class="cdn-error" hidden>
       <h2>CDN data could not be loaded</h2>
-      <p>If you see this, cross-origin requests may be blocked. Save <code>npcs.json</code>, <code>items.json</code>, <code>storagevaults.json</code>, <code>areas.json</code>, and <code>attributes.json</code> from the <a href="https://cdn.projectgorgon.com/v457/data/" target="_blank" rel="noopener">CDN data</a> into a <code>data/</code> folder next to this file, then serve the folder with a local server (e.g. <code>npx serve</code> or <code>python -m http.server</code>).</p>
+      <p>If you see this, cross-origin requests may be blocked. Save <code>npcs.json</code>, <code>items.json</code>, <code>storagevaults.json</code>, <code>areas.json</code>, <code>attributes.json</code>, <code>skills.json</code>, and <code>abilities.json</code> from the <a href="https://cdn.projectgorgon.com/v457/data/" target="_blank" rel="noopener">CDN data</a> into a <code>data/</code> folder next to this file, then serve the folder with a local server (e.g. <code>npx serve</code> or <code>python -m http.server</code>).</p>
     </section>
   </main>
 
   <footer>
     <p>Some portions copyright <span id="copyrightYear"></span> Elder Game, LLC.</p>
   </footer>
+
+  <button type="button" id="backToTop" class="back-to-top" aria-label="Back to top" hidden>Back to top</button>
 
   <script src="app.js"></script>
 </body>
