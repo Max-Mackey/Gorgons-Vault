@@ -9,6 +9,9 @@
   let items = {};
   let storageVaults = {};
   let areas = {};
+  let attributes = {};
+  let tsysClientInfo = {};
+  let tsysByInternalName = {};
   let charactersItems = {};
   let charactersSheets = {};
   let giftableNpcs = [];
@@ -29,7 +32,31 @@
   const storageSaverBtn = $('storageSaverBtn');
   const storageSaverStatus = $('storageSaverStatus');
   const storageSaverResults = $('storageSaverResults');
+  const fullInventoryEmpty = $('fullInventoryEmpty');
+  const fullInventoryResults = $('fullInventoryResults');
+  const fullInventoryCategory = $('fullInventoryCategory');
   const PANEL_ID = 'data-panel';
+
+  const FULL_INVENTORY_CATEGORY_ORDER = [
+    'Equipment', 'Skill Book', 'Recipe', 'Work Order', 'Consumables', 'Potions', 'Gardening', 'Ingredients',
+    'Cooking', 'Ability ingredients', 'Nature', 'Brewing', 'Other'
+  ];
+  const KEYWORD_TO_CATEGORY = {
+    Equipment: 'Equipment', Weapon: 'Equipment', Armor: 'Equipment', Shield: 'Equipment',
+    OffHand: 'Equipment', Sword: 'Equipment', Staff: 'Equipment', Bow: 'Equipment',
+    Crossbow: 'Equipment', Unarmed: 'Equipment', Dagger: 'Equipment',
+    Consumable: 'Consumables',
+    Potion: 'Potions',
+    GardeningRelated: 'Gardening', Plant: 'Gardening', Seed: 'Gardening', Seedling: 'Gardening',
+    FlowerSeed: 'Gardening', Flower: 'Gardening',
+    AlchemyIngredient: 'Ingredients', BrewingIngredient: 'Ingredients', BrewingGarnishA2: 'Ingredients',
+    BrewingGarnishA3: 'Ingredients', BrewingGarnishA4: 'Ingredients', BrewingAnimalPartA5: 'Ingredients',
+    BrewingFlowersW3: 'Ingredients', BrewingFlowersW4: 'Ingredients', BrewingFlowersW5: 'Ingredients', BrewingFlowersW6: 'Ingredients',
+    CookingIngredient: 'Cooking',
+    AbilityIngredient: 'Ability ingredients',
+    Nature: 'Nature',
+    BrewingRelated: 'Brewing', BottledItem: 'Brewing'
+  };
 
   function setStatus(msg) {
     dataStatus.textContent = msg;
@@ -92,6 +119,30 @@
         areas = await fetchJson(tryUrl(DATA_BASE, 'areas.json'));
       } catch (e2) {
         areas = {};
+      }
+    }
+    try {
+      attributes = await fetchJson(tryUrl(CDN_BASE, 'attributes.json'));
+    } catch (e2) {
+      try {
+        attributes = await fetchJson(tryUrl(DATA_BASE, 'attributes.json'));
+      } catch (e2) {
+        attributes = {};
+      }
+    }
+    try {
+      tsysClientInfo = await fetchJson(tryUrl(CDN_BASE, 'tsysclientinfo.json'));
+    } catch (e) {
+      try {
+        tsysClientInfo = await fetchJson(tryUrl(DATA_BASE, 'tsysclientinfo.json'));
+      } catch (e2) {
+        tsysClientInfo = {};
+      }
+    }
+    tsysByInternalName = {};
+    for (const entry of Object.values(tsysClientInfo)) {
+      if (entry && entry.InternalName) {
+        tsysByInternalName[entry.InternalName] = entry;
       }
     }
     buildGiftableNpcsAndMaps();
@@ -427,11 +478,327 @@
     if (panel) {
       panel.classList.remove('hidden');
     }
+    if (panelId === 'panelInventory') {
+      renderFullInventory();
+    }
   }
 
   function getFirstCharacterItems() {
     const names = Object.keys(charactersItems);
     return names.length ? charactersItems[names[0]] : null;
+  }
+
+  function getCategoryForItem(keywords) {
+    if (!Array.isArray(keywords)) return 'Other';
+    const bases = (keywords || []).map(itemKeywordBase);
+    for (const cat of FULL_INVENTORY_CATEGORY_ORDER) {
+      if (cat === 'Skill Book' || cat === 'Recipe' || cat === 'Work Order') continue;
+      for (const kw of bases) {
+        if (KEYWORD_TO_CATEGORY[kw] === cat) return cat;
+      }
+    }
+    return 'Other';
+  }
+
+  function getCategoryForItemWithIcon(displayName, iconId, keywords, description) {
+    if (iconId === 5792) return 'Skill Book';
+    if (iconId === 4003) {
+      const name = (displayName || '').toLowerCase();
+      const desc = (description || '').toLowerCase();
+      const text = name + ' ' + desc;
+      if (text.includes('work order')) return 'Work Order';
+      if (text.includes('recipe')) return 'Recipe';
+    }
+    return getCategoryForItem(keywords);
+  }
+
+  function formatEffectDesc(desc, attrs) {
+    if (typeof desc !== 'string' || !desc) return desc;
+    const braceGroups = desc.match(/\{[^}]+\}/g);
+    if (!braceGroups || braceGroups.length < 2) return desc;
+    const attrKey = braceGroups[0].slice(1, -1);
+    const valueStr = braceGroups[1].slice(1, -1);
+    const attr = attrs && attrs[attrKey];
+    const label = (attr && attr.Label) ? attr.Label : attrKey;
+    let result;
+    const num = parseFloat(valueStr);
+    if (!Number.isNaN(num)) {
+      const sign = num > 0 ? '+' : '';
+      const displayVal = num % 1 === 0 ? String(Math.round(num)) : String(num);
+      result = label + ' ' + sign + displayVal;
+    } else {
+      result = label + ' ' + valueStr;
+    }
+    if (braceGroups.length >= 3) {
+      result += ' (' + braceGroups[2].slice(1, -1) + ')';
+    }
+    return result;
+  }
+
+  function formatEffectDescsForDisplay(effectDescs, attrs) {
+    if (!Array.isArray(effectDescs) || !effectDescs.length) return [];
+    return effectDescs.map((d) => {
+      if (typeof d !== 'string') return String(d);
+      if (d.indexOf('{') === -1) return d.trim();
+      return d.split(/\s*·\s*/).map((p) => formatEffectDesc(p.trim(), attrs)).join(' · ');
+    });
+  }
+
+  function appendTextWithIcons(parent, str) {
+    if (typeof str !== 'string' || !str) return;
+    const re = /<icon=(\d+)>/gi;
+    let lastIndex = 0;
+    let m;
+    while ((m = re.exec(str)) !== null) {
+      if (m.index > lastIndex) {
+        parent.appendChild(document.createTextNode(str.slice(lastIndex, m.index)));
+      }
+      const img = document.createElement('img');
+      img.src = CDN_ICONS_BASE + '/icon_' + m[1] + '.png';
+      img.alt = '';
+      img.className = 'effect-inline-icon';
+      parent.appendChild(img);
+      parent.appendChild(document.createTextNode('\u00A0'));
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < str.length) {
+      parent.appendChild(document.createTextNode(str.slice(lastIndex)));
+    }
+  }
+
+  function getModEffectDescs(tsysPowers) {
+    if (!Array.isArray(tsysPowers) || !tsysPowers.length) return [];
+    const out = [];
+    for (const { Power, Tier } of tsysPowers) {
+      const entry = tsysByInternalName[Power];
+      if (!entry || !entry.Tiers) continue;
+      const tierKey = 'id_' + Tier;
+      const tierData = entry.Tiers[tierKey];
+      if (!tierData || !Array.isArray(tierData.EffectDescs)) {
+        out.push((Power || 'Unknown') + ' (Tier ' + Tier + ')');
+        continue;
+      }
+      for (const desc of tierData.EffectDescs) {
+        if (typeof desc === 'string' && desc.trim()) out.push(desc.trim());
+      }
+    }
+    return out;
+  }
+
+  function buildFullInventory() {
+    const userItems = getFirstCharacterItems();
+    if (!userItems || !userItems.length) return null;
+    const byKey = {};
+    for (const row of userItems) {
+      const typeId = row.TypeID;
+      const name = (row.Name && row.Name.trim()) ? row.Name.trim() : null;
+      const key = typeId + '\n' + (name || '');
+      if (!byKey[key]) {
+        byKey[key] = {
+          typeId,
+          name,
+          vaults: []
+        };
+      }
+      byKey[key].vaults.push({
+        vault: row.StorageVault || 'Unknown',
+        stack: row.StackSize ?? 1,
+      });
+      if (row.TSysPowers && Array.isArray(row.TSysPowers) && row.TSysPowers.length > 0 && !byKey[key].tsysPowers) {
+        byKey[key].tsysPowers = row.TSysPowers;
+      }
+    }
+    const cdnItems = {};
+    const byCategory = {};
+    for (const key of Object.keys(byKey)) {
+      const data = byKey[key];
+      const cdnItem = getCdnItem(data.typeId);
+      if (!cdnItems[key]) cdnItems[key] = cdnItem;
+      const displayName = data.name || (cdnItem && cdnItem.Name) || 'Unknown';
+      const keywords = (cdnItem && cdnItem.Keywords) || [];
+      const iconId = (cdnItem && cdnItem.IconId != null) ? cdnItem.IconId : null;
+      const description = (cdnItem && cdnItem.Description && typeof cdnItem.Description === 'string' && cdnItem.Description.trim())
+        ? cdnItem.Description.trim()
+        : null;
+      const category = getCategoryForItemWithIcon(displayName, iconId, keywords, description);
+      const rawEffectDescs = (cdnItem && cdnItem.EffectDescs && Array.isArray(cdnItem.EffectDescs))
+        ? cdnItem.EffectDescs
+        : [];
+      const effectDescs = formatEffectDescsForDisplay(rawEffectDescs, attributes);
+      const rawModDescs = getModEffectDescs(data.tsysPowers);
+      const modDescs = formatEffectDescsForDisplay(rawModDescs, attributes);
+      let total = 0;
+      const locationParts = [];
+      for (const v of data.vaults) {
+        total += v.stack;
+        const mapName = vaultCityHeading(v.vault) || 'Other';
+        locationParts.push(mapName + ': ' + vaultFriendlyName(v.vault) + ' — ' + v.stack);
+      }
+      if (!byCategory[category]) byCategory[category] = [];
+      byCategory[category].push({
+        displayName,
+        iconId,
+        total,
+        locations: locationParts,
+        effectDescs,
+        modDescs,
+        description,
+      });
+    }
+    for (const cat of Object.keys(byCategory)) {
+      byCategory[cat].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }
+    return byCategory;
+  }
+
+  function renderFullInventory() {
+    if (!fullInventoryResults) return;
+    fullInventoryResults.innerHTML = '';
+    if (fullInventoryEmpty) fullInventoryEmpty.hidden = true;
+    const byCategory = buildFullInventory();
+    if (!byCategory) {
+      if (fullInventoryEmpty) {
+        fullInventoryEmpty.hidden = false;
+        fullInventoryEmpty.textContent = 'Load an items export above first.';
+      }
+      if (fullInventoryCategory) {
+        fullInventoryCategory.innerHTML = '<option value="">All categories</option>';
+        fullInventoryCategory.disabled = true;
+      }
+      return;
+    }
+    const selectedCategory = fullInventoryCategory ? fullInventoryCategory.value : '';
+    if (fullInventoryCategory) {
+      fullInventoryCategory.disabled = false;
+      const opts = fullInventoryCategory.querySelectorAll('option');
+      const hasOptions = opts.length > 1;
+      const categoriesWithItems = FULL_INVENTORY_CATEGORY_ORDER.filter((c) => byCategory[c] && byCategory[c].length > 0);
+      const categoriesForDropdown = FULL_INVENTORY_CATEGORY_ORDER.filter((c) =>
+        byCategory[c] && byCategory[c].length > 0
+      );
+      if (!hasOptions || fullInventoryCategory.options.length !== categoriesForDropdown.length + 1) {
+        fullInventoryCategory.innerHTML = '<option value="">All categories</option>';
+        categoriesForDropdown.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          fullInventoryCategory.appendChild(opt);
+        });
+      }
+    }
+    const categoriesToShow = selectedCategory
+      ? (byCategory[selectedCategory] ? [selectedCategory] : [])
+      : FULL_INVENTORY_CATEGORY_ORDER;
+    for (const cat of categoriesToShow) {
+      const rows = byCategory[cat];
+      const section = document.createElement('div');
+      section.className = 'full-inventory-section';
+      const heading = document.createElement('h3');
+      heading.className = 'full-inventory-category-heading';
+      heading.textContent = cat;
+      section.appendChild(heading);
+      if (!rows || !rows.length) {
+        continue;
+      } else {
+      const isEquipment = cat === 'Equipment';
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'full-inventory-table-wrap';
+      const table = document.createElement('table');
+      table.className = 'full-inventory-table';
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const headers = isEquipment ? ['Icon', 'Name', 'Mods', 'Qty', 'Location(s)'] : ['Icon', 'Name', 'Qty', 'Location(s)'];
+      headers.forEach((label) => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+        const tdIcon = document.createElement('td');
+        tdIcon.setAttribute('data-label', 'Icon');
+        if (row.iconId != null) {
+          const img = document.createElement('img');
+          img.src = CDN_ICONS_BASE + '/icon_' + row.iconId + '.png';
+          img.alt = '';
+          img.className = 'item-icon';
+          tdIcon.appendChild(img);
+        } else {
+          tdIcon.textContent = '—';
+        }
+        tr.appendChild(tdIcon);
+        const tdName = document.createElement('td');
+        tdName.setAttribute('data-label', 'Name');
+        const nameBlock = document.createElement('div');
+        nameBlock.className = 'full-inventory-name-cell';
+        const nameLine = document.createElement('div');
+        nameLine.className = 'full-inventory-item-name';
+        nameLine.textContent = row.displayName;
+        nameBlock.appendChild(nameLine);
+        if (row.description) {
+          const descEl = document.createElement('div');
+          descEl.className = 'full-inventory-description';
+          descEl.textContent = row.description;
+          nameBlock.appendChild(descEl);
+        }
+        if (row.effectDescs && row.effectDescs.length > 0) {
+          const effectWrap = document.createElement('div');
+          effectWrap.className = 'full-inventory-effect-list';
+          row.effectDescs.forEach((effectText) => {
+            const effectLine = document.createElement('div');
+            effectLine.className = 'full-inventory-effect-descs';
+            appendTextWithIcons(effectLine, effectText);
+            effectWrap.appendChild(effectLine);
+          });
+          nameBlock.appendChild(effectWrap);
+        }
+        tdName.appendChild(nameBlock);
+        tr.appendChild(tdName);
+        if (isEquipment) {
+          const tdMods = document.createElement('td');
+          tdMods.setAttribute('data-label', 'Mods');
+          if (row.modDescs && row.modDescs.length > 0) {
+            const modWrap = document.createElement('div');
+            modWrap.className = 'full-inventory-mod-list';
+            row.modDescs.forEach((modText) => {
+              const modLine = document.createElement('div');
+              modLine.className = 'full-inventory-mod-descs';
+              appendTextWithIcons(modLine, modText);
+              modWrap.appendChild(modLine);
+            });
+            tdMods.appendChild(modWrap);
+          } else {
+            tdMods.textContent = '—';
+          }
+          tr.appendChild(tdMods);
+        }
+        const tdQty = document.createElement('td');
+        tdQty.setAttribute('data-label', 'Qty');
+        tdQty.textContent = String(row.total);
+        tr.appendChild(tdQty);
+        const tdLoc = document.createElement('td');
+        tdLoc.setAttribute('data-label', 'Location(s)');
+        const locWrap = document.createElement('div');
+        locWrap.className = 'full-inventory-locations';
+        row.locations.forEach((loc) => {
+          const locLine = document.createElement('div');
+          locLine.className = 'full-inventory-location-line';
+          locLine.textContent = loc;
+          locWrap.appendChild(locLine);
+        });
+        tdLoc.appendChild(locWrap);
+        tr.appendChild(tdLoc);
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      section.appendChild(tableWrap);
+      }
+      fullInventoryResults.appendChild(section);
+    }
   }
 
   function runStorageSaver() {
@@ -532,5 +899,8 @@
       });
     });
     if (storageSaverBtn) storageSaverBtn.addEventListener('click', runStorageSaver);
+    if (fullInventoryCategory) {
+      fullInventoryCategory.addEventListener('change', renderFullInventory);
+    }
   }
 })();

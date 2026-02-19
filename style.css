@@ -449,6 +449,219 @@ footer p {
   font-style: italic;
 }
 
+/* Full Inventory */
+.full-inventory-panel .panel-desc {
+  margin-bottom: 0.5rem;
+}
+
+.full-inventory-controls {
+  margin-bottom: 1rem;
+}
+
+.full-inventory-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.full-inventory-controls label span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.full-inventory-controls select {
+  padding: 0.5rem 0.65rem;
+  min-width: 12rem;
+  max-width: 20rem;
+  min-height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.full-inventory-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.full-inventory-item-name {
+  font-weight: 600;
+}
+
+.full-inventory-description {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  line-height: 1.35;
+}
+
+.full-inventory-effect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.full-inventory-effect-descs {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.full-inventory-mod-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.full-inventory-mod-descs {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.effect-inline-icon {
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+.full-inventory-locations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.full-inventory-location-line {
+  font-size: 0.9rem;
+}
+
+.full-inventory-empty-category {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.full-inventory-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.full-inventory-section {
+  margin-bottom: 0;
+}
+
+.full-inventory-category-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.full-inventory-table-wrap {
+  overflow-x: auto;
+}
+
+.full-inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.full-inventory-table th,
+.full-inventory-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.full-inventory-table thead th {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.full-inventory-table .item-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.full-inventory-table td:nth-child(2) {
+  max-width: 20rem;
+  word-break: break-word;
+}
+
+.full-inventory-table td:last-child {
+  max-width: 24rem;
+  word-break: break-word;
+}
+
+@media (max-width: 48rem) {
+  .full-inventory-table thead {
+    display: none;
+  }
+
+  .full-inventory-table,
+  .full-inventory-table tbody,
+  .full-inventory-table tr,
+  .full-inventory-table td {
+    display: block;
+  }
+
+  .full-inventory-table tr {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .full-inventory-table td {
+    padding: 0.35rem 0;
+    border-bottom: none;
+  }
+
+  .full-inventory-table td:not(:first-child)::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.8rem;
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+
+  .full-inventory-table td:first-child {
+    padding-bottom: 0.5rem;
+  }
+
+  .full-inventory-table td:first-child::before {
+    content: none;
+  }
+
+  .full-inventory-table .item-icon {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+}
+
 /* Stub panels */
 .stub-panel .stub-message {
   color: var(--muted);
