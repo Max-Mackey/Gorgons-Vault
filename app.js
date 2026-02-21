@@ -1039,18 +1039,21 @@
     if (panelId === 'panelWhatsThisFor') {
       if (whatsThisForResults) renderWhatsThisForResults(whatsThisForSearch ? whatsThisForSearch.value : '', null);
     }
-    if (typeof gtag === 'function') {
-      const featureNames = {
-        panelIntro: "How to use",
-        panelFavor: "Favor Finder",
-        panelStorage: "Storage Saver",
-        panelTripPlan: "Trip plan",
-        panelInventory: "Full Inventory",
-        panelMods: "Mod Finder",
-        panelWhatsThisFor: "What's this for?"
-      };
-      gtag('event', 'feature_view', { feature: panelId, feature_name: featureNames[panelId] || panelId });
-    }
+    window.dataLayer = window.dataLayer || [];
+    const featureNames = {
+      panelIntro: "How to use",
+      panelFavor: "Favor Finder",
+      panelStorage: "Storage Saver",
+      panelTripPlan: "Trip plan",
+      panelInventory: "Full Inventory",
+      panelMods: "Mod Finder",
+      panelWhatsThisFor: "What's this for?"
+    };
+    window.dataLayer.push({
+      event: 'feature_view',
+      feature: panelId,
+      feature_name: featureNames[panelId] || panelId
+    });
   }
 
   /** Items array for the first character in charactersItems (shared by Favor, Storage, Full Inventory). */
