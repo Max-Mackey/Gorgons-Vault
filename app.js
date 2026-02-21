@@ -6,10 +6,27 @@
 (function () {
   'use strict';
 
-  // ——— CDN and local data paths ———
-  const CDN_BASE = 'https://cdn.projectgorgon.com/v457/data';
-  const CDN_ICONS_BASE = 'https://cdn.projectgorgon.com/v457/icons';
+  // ——— CDN and local data paths (version set at load from fileversion.txt) ———
+  const FILEVERSION_URL = 'https://client.projectgorgon.com/fileversion.txt';
+  const CDN_VERSION_DEFAULT = '458';
+  let cdnVersion = '';
+  let CDN_BASE = '';
+  let CDN_ICONS_BASE = '';
   const DATA_BASE = './data';
+  const CACHE_PREFIX = 'gorgon_cdn_';
+
+  // ——— Embedded example data (no fetch needed; works with file:// and any server) ———
+  const EXAMPLE_ITEMS = {
+    Character: 'Example Character',
+    Items: [
+      { TypeID: 1, Name: 'Example herb', StorageVault: 'Serbule Council Vault', StackSize: 5 },
+      { TypeID: 1, Name: 'Example herb', StorageVault: 'Serbule Bank', StackSize: 3 },
+      { TypeID: 2, Name: 'Example ore', StorageVault: 'Serbule Council Vault', StackSize: 1 },
+      { TypeID: 2, Name: 'Example ore', StorageVault: 'Serbule Bank', StackSize: 2 },
+      { TypeID: 3, Name: 'Example ingredient', StorageVault: 'Serbule Council Vault', StackSize: 10 }
+    ]
+  };
+  const EXAMPLE_CHARACTER = { Character: 'Example Character', NPCs: {} };
 
   // ——— In-memory data (CDN + user uploads) ———
   let npcs = {};
@@ -51,6 +68,9 @@
   const fullInventoryCategory = $('fullInventoryCategory');
   const fullInventoryMap = $('fullInventoryMap');
   const fullInventoryVault = $('fullInventoryVault');
+  const fullInventorySkillReq1 = $('fullInventorySkillReq1');
+  const fullInventorySkillReq2 = $('fullInventorySkillReq2');
+  const fullInventorySlotCheckboxes = $('fullInventorySlotCheckboxes');
   const fullInventorySearch = $('fullInventorySearch');
   const fullInventoryClearFilters = $('fullInventoryClearFilters');
   const backToTopBtn = $('backToTop');
@@ -141,11 +161,51 @@
     return res.json();
   }
 
-  /** Load all CDN JSON (npcs, items, storage, areas, attributes, tsys, skills, abilities, recipes); build indexes. */
-  async function loadCdn() {
-    const tryUrl = (base, file) => base + '/' + file;
+  /** Resolve current game data version from client.projectgorgon.com (trimmed). Falls back to CDN_VERSION_DEFAULT on failure. */
+  async function getCdnVersion() {
     try {
-      npcs = await fetchJson(tryUrl(CDN_BASE, 'npcs.json'));
+      const r = await fetch(FILEVERSION_URL);
+      if (!r.ok) return CDN_VERSION_DEFAULT;
+      const t = await r.text();
+      const v = (t && t.trim()) ? t.trim() : CDN_VERSION_DEFAULT;
+      return v || CDN_VERSION_DEFAULT;
+    } catch (e) {
+      return CDN_VERSION_DEFAULT;
+    }
+  }
+
+  /** Load one CDN file: try localStorage cache (keyed by version), then fetch and cache. */
+  async function fetchCdnCached(version, file) {
+    const key = CACHE_PREFIX + version + '_' + file;
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached) return JSON.parse(cached);
+    } catch (e) { /* ignore */ }
+    const url = CDN_BASE + '/' + file;
+    const data = await fetchJson(url);
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (err) { /* quota or disabled */ }
+    return data;
+  }
+
+  /** Load all CDN JSON (version from fileversion.txt, then npcs, items, etc. with caching); build indexes. */
+  async function loadCdn() {
+    cdnVersion = await getCdnVersion();
+    CDN_BASE = 'https://cdn.projectgorgon.com/v' + cdnVersion + '/data';
+    CDN_ICONS_BASE = 'https://cdn.projectgorgon.com/v' + cdnVersion + '/icons';
+
+    const tryUrl = (base, file) => base + '/' + file;
+    const tryCdnThenLocal = async (file) => {
+      try {
+        return await fetchCdnCached(cdnVersion, file);
+      } catch (e) {
+        return await fetchJson(tryUrl(DATA_BASE, file));
+      }
+    };
+
+    try {
+      npcs = await fetchCdnCached(cdnVersion, 'npcs.json');
     } catch (e) {
       try {
         npcs = await fetchJson(tryUrl(DATA_BASE, 'npcs.json'));
@@ -154,7 +214,7 @@
       }
     }
     try {
-      items = await fetchJson(tryUrl(CDN_BASE, 'items.json'));
+      items = await fetchCdnCached(cdnVersion, 'items.json');
     } catch (e) {
       try {
         items = await fetchJson(tryUrl(DATA_BASE, 'items.json'));
@@ -163,7 +223,7 @@
       }
     }
     try {
-      storageVaults = await fetchJson(tryUrl(CDN_BASE, 'storagevaults.json'));
+      storageVaults = await fetchCdnCached(cdnVersion, 'storagevaults.json');
     } catch (e) {
       try {
         storageVaults = await fetchJson(tryUrl(DATA_BASE, 'storagevaults.json'));
@@ -172,7 +232,7 @@
       }
     }
     try {
-      areas = await fetchJson(tryUrl(CDN_BASE, 'areas.json'));
+      areas = await fetchCdnCached(cdnVersion, 'areas.json');
     } catch (e) {
       try {
         areas = await fetchJson(tryUrl(DATA_BASE, 'areas.json'));
@@ -181,8 +241,8 @@
       }
     }
     try {
-      attributes = await fetchJson(tryUrl(CDN_BASE, 'attributes.json'));
-    } catch (e2) {
+      attributes = await fetchCdnCached(cdnVersion, 'attributes.json');
+    } catch (e) {
       try {
         attributes = await fetchJson(tryUrl(DATA_BASE, 'attributes.json'));
       } catch (e2) {
@@ -190,7 +250,7 @@
       }
     }
     try {
-      tsysClientInfo = await fetchJson(tryUrl(CDN_BASE, 'tsysclientinfo.json'));
+      tsysClientInfo = await fetchCdnCached(cdnVersion, 'tsysclientinfo.json');
     } catch (e) {
       try {
         tsysClientInfo = await fetchJson(tryUrl(DATA_BASE, 'tsysclientinfo.json'));
@@ -205,7 +265,7 @@
       }
     }
     try {
-      skills = await fetchJson(tryUrl(CDN_BASE, 'skills.json'));
+      skills = await fetchCdnCached(cdnVersion, 'skills.json');
     } catch (e) {
       try {
         skills = await fetchJson(tryUrl(DATA_BASE, 'skills.json'));
@@ -214,7 +274,7 @@
       }
     }
     try {
-      abilities = await fetchJson(tryUrl(CDN_BASE, 'abilities.json'));
+      abilities = await fetchCdnCached(cdnVersion, 'abilities.json');
     } catch (e) {
       try {
         abilities = await fetchJson(tryUrl(DATA_BASE, 'abilities.json'));
@@ -223,7 +283,7 @@
       }
     }
     try {
-      recipes = await fetchJson(tryUrl(CDN_BASE, 'recipes.json'));
+      recipes = await fetchCdnCached(cdnVersion, 'recipes.json');
     } catch (e) {
       try {
         recipes = await fetchJson(tryUrl(DATA_BASE, 'recipes.json'));
@@ -531,6 +591,28 @@
     npcSelect.disabled = false;
   }
 
+  /** Apply parsed items data (from file or example fetch); update status and run current tab. */
+  function applyItemsData(data, sourceLabel) {
+    const name = (data.Character || sourceLabel || 'Unknown').trim() || sourceLabel;
+    if (!data.Items || !Array.isArray(data.Items)) {
+      setStatus('Data has no Items array.');
+      runCurrentTab();
+      return;
+    }
+    charactersItems[name] = data.Items;
+    setStatus('Loaded items from ' + sourceLabel + '.');
+    runCurrentTab();
+  }
+
+  /** Apply parsed character sheet data (from file or example fetch); update status and run current tab. */
+  function applyCharacterSheetData(data, sourceLabel) {
+    const name = (data.Character || sourceLabel || 'Unknown').trim() || sourceLabel;
+    charactersSheets[name] = data;
+    const prev = dataStatus.textContent || '';
+    setStatus(prev ? prev + ' Character sheet loaded.' : 'Character sheet loaded.');
+    runCurrentTab();
+  }
+
   /** Parse items JSON and store in charactersItems keyed by character name. */
   function onItemsFilesChange() {
     const file = itemsFiles.files && itemsFiles.files[0];
@@ -545,15 +627,7 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
-        const name = (data.Character || file.name || 'Unknown').trim() || file.name;
-        if (!data.Items || !Array.isArray(data.Items)) {
-          setStatus('File has no Items array.');
-          runCurrentTab();
-          return;
-        }
-        charactersItems[name] = data.Items;
-        setStatus('Loaded items from ' + file.name + '.');
-        runCurrentTab();
+        applyItemsData(data, file.name);
       } catch (e) {
         setStatus('Invalid JSON: ' + e.message);
       }
@@ -573,11 +647,7 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
-        const name = (data.Character || file.name || 'Unknown').trim() || file.name;
-        charactersSheets[name] = data;
-        const prev = dataStatus.textContent || '';
-        setStatus(prev ? prev + ' Character sheet loaded.' : 'Character sheet loaded.');
-        runCurrentTab();
+        applyCharacterSheetData(data, file.name);
       } catch (_) {
         setStatus('Invalid character sheet JSON.');
       }
@@ -589,6 +659,7 @@
   function runCurrentTab() {
     const panel = document.querySelector('.feature-panel:not(.hidden)');
     const id = panel ? panel.id : null;
+    if (id === 'panelIntro') return;
     if (id === 'panelFavor') runMatch();
     else if (id === 'panelStorage') runStorageSaver();
     else if (id === 'panelTripPlan') { populateTripStopOptions(); renderTripPlan(); }
@@ -860,6 +931,8 @@
     mapSelect.innerHTML = '<option value="">— Loading CDN… —</option>';
     loadCdn()
       .then(() => {
+        const versionEl = document.getElementById('cdnVersion');
+        if (versionEl) versionEl.textContent = 'Data: v' + cdnVersion;
         populateMapDropdown();
         npcSelect.innerHTML = '<option value="">— Choose a map first —</option>';
         npcSelect.disabled = true;
@@ -868,6 +941,8 @@
         buildModFinderSlotFilter();
       })
       .catch((err) => {
+        const versionEl = document.getElementById('cdnVersion');
+        if (versionEl) versionEl.textContent = 'Data: —';
         mapSelect.innerHTML = '<option value="">— CDN failed —</option>';
         mapSelect.disabled = true;
         cdnError.hidden = false;
@@ -882,6 +957,45 @@
     npcSelect.addEventListener('change', runMatch);
     itemsFiles.addEventListener('change', onItemsFilesChange);
     characterFiles.addEventListener('change', onCharacterFilesChange);
+
+    const loadExampleItemsBtn = $('loadExampleItems');
+    const loadExampleCharacterBtn = $('loadExampleCharacter');
+    function fetchFirstJson(urls) {
+      let i = 0;
+      function tryNext() {
+        if (i >= urls.length) return Promise.reject(new Error('All failed'));
+        const url = urls[i++];
+        return fetch(url).then((r) => {
+          if (!r.ok) throw new Error(r.statusText);
+          return r.json();
+        }).catch(tryNext);
+      }
+      return tryNext();
+    }
+    if (loadExampleItemsBtn) {
+      loadExampleItemsBtn.addEventListener('click', () => {
+        setStatus('Loading example items…');
+        fetchFirstJson(['Kanbe_items_2026-02-17-16-53-40Z.json', 'examples/example-items.json'])
+          .then((data) => { applyItemsData(data, 'Kanbe items'); switchTab('panelStorage'); })
+          .catch(() => {
+            applyItemsData(EXAMPLE_ITEMS, 'example items');
+            setStatus('Using built-in sample. Serve the app (e.g. npx serve) so the JSON files in this folder can load.');
+            switchTab('panelStorage');
+          });
+      });
+    }
+    if (loadExampleCharacterBtn) {
+      loadExampleCharacterBtn.addEventListener('click', () => {
+        fetchFirstJson(['Character_Kanbe.json', 'examples/example-character.json'])
+          .then((data) => { applyCharacterSheetData(data, 'Character_Kanbe'); switchTab('panelFavor'); })
+          .catch(() => {
+            applyCharacterSheetData(EXAMPLE_CHARACTER, 'example character sheet');
+            setStatus('Using built-in sample. Serve the app (e.g. npx serve) so the JSON files can load.');
+            switchTab('panelFavor');
+          });
+      });
+    }
+
     initTabs();
   }
 
@@ -908,6 +1022,7 @@
     if (panelId === 'panelFavor') {
       runMatch();
     }
+    /* panelIntro has no panel-specific logic */
     if (panelId === 'panelInventory') {
       renderFullInventory();
     }
@@ -930,6 +1045,16 @@
   function getFirstCharacterItems() {
     const names = Object.keys(charactersItems);
     return names.length ? charactersItems[names[0]] : null;
+  }
+
+  /** Equipment slot from item keywords (Head, Chest, … OffHand, etc.); first match in MOD_SLOT_ORDER, else Other. */
+  function getEquipmentSlotFromKeywords(keywords) {
+    if (!Array.isArray(keywords)) return MOD_SLOT_FILTER_OTHER;
+    const bases = keywords.map(itemKeywordBase);
+    for (const slot of MOD_SLOT_ORDER) {
+      if (bases.includes(slot)) return slot;
+    }
+    return MOD_SLOT_FILTER_OTHER;
   }
 
   /** Map item keywords to a single category (priority order). */
@@ -1331,6 +1456,42 @@
     modFinderSlotCheckboxes.appendChild(otherLabel);
   }
 
+  /** Build equipment slot filter checkboxes (Head, Chest, … + Other) in Full Inventory. */
+  function buildFullInventorySlotFilter() {
+    if (!fullInventorySlotCheckboxes) return;
+    fullInventorySlotCheckboxes.innerHTML = '';
+    for (const slot of MOD_SLOT_ORDER) {
+      const label = document.createElement('label');
+      label.className = 'full-inventory-slot-checkbox-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = slot;
+      cb.name = 'fullInventorySlot';
+      cb.setAttribute('aria-label', 'Slot: ' + slot);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + slot));
+      fullInventorySlotCheckboxes.appendChild(label);
+    }
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'full-inventory-slot-checkbox-label';
+    const otherCb = document.createElement('input');
+    otherCb.type = 'checkbox';
+    otherCb.value = MOD_SLOT_FILTER_OTHER;
+    otherCb.name = 'fullInventorySlot';
+    otherCb.setAttribute('aria-label', 'Other slots');
+    otherLabel.appendChild(otherCb);
+    otherLabel.appendChild(document.createTextNode(' Other'));
+    fullInventorySlotCheckboxes.appendChild(otherLabel);
+  }
+
+  /** Selected equipment slot checkboxes in Full Inventory; null = show all slots. */
+  function getSelectedFullInventorySlotFilter() {
+    if (!fullInventorySlotCheckboxes) return null;
+    const checked = Array.from(fullInventorySlotCheckboxes.querySelectorAll('input[type="checkbox"]:checked'))
+      .map((cb) => cb.value);
+    return checked.length > 0 ? checked : null;
+  }
+
   /** Build { skillKey: maxLevel } from item's TSysPowers (mods). Equipment equip requirements come from mod tiers' Skill + SkillLevelPrereq. */
   function getSkillReqsFromTsysPowers(tsysPowers) {
     if (!Array.isArray(tsysPowers) || !tsysPowers.length) return {};
@@ -1454,6 +1615,8 @@
         const mapName = vaultCityHeading(v.vault) || 'Other';
         locationParts.push({ mapName, vaultId: v.vault, stack: v.stack });
       }
+      const skillReqKeys = mergedReqs && typeof mergedReqs === 'object' ? Object.keys(mergedReqs) : [];
+      const equipmentSlot = category === 'Equipment' ? getEquipmentSlotFromKeywords(keywords) : null;
       if (!byCategory[category]) byCategory[category] = [];
       byCategory[category].push({
         displayName,
@@ -1467,6 +1630,8 @@
         description,
         rarity: data.rarity || null,
         skillReqsText: skillReqsText || null,
+        skillReqKeys,
+        equipmentSlot,
       });
     }
     for (const cat of Object.keys(byCategory)) {
@@ -1492,12 +1657,21 @@
       }
       if (fullInventoryMap) { fullInventoryMap.innerHTML = '<option value="">All maps</option>'; fullInventoryMap.disabled = true; }
       if (fullInventoryVault) { fullInventoryVault.innerHTML = '<option value="">All vaults</option>'; fullInventoryVault.disabled = true; }
+      if (fullInventorySkillReq1) { fullInventorySkillReq1.innerHTML = '<option value="">Any</option>'; fullInventorySkillReq1.disabled = true; }
+      if (fullInventorySkillReq2) { fullInventorySkillReq2.innerHTML = '<option value="">Any</option>'; fullInventorySkillReq2.disabled = true; }
+      if (fullInventorySlotCheckboxes) { fullInventorySlotCheckboxes.innerHTML = ''; }
       if (fullInventorySearch) fullInventorySearch.disabled = true;
       return;
     }
+    if (fullInventorySlotCheckboxes && fullInventorySlotCheckboxes.children.length === 0) {
+      buildFullInventorySlotFilter();
+    }
+    const selectedSlotFilter = getSelectedFullInventorySlotFilter();
     const selectedCategory = fullInventoryCategory ? fullInventoryCategory.value : '';
     const selectedMap = fullInventoryMap && fullInventoryMap.value ? fullInventoryMap.value.trim() : '';
     const selectedVault = fullInventoryVault && fullInventoryVault.value ? fullInventoryVault.value.trim() : '';
+    const selectedSkillReq1 = fullInventorySkillReq1 && fullInventorySkillReq1.value ? fullInventorySkillReq1.value.trim() : '';
+    const selectedSkillReq2 = fullInventorySkillReq2 && fullInventorySkillReq2.value ? fullInventorySkillReq2.value.trim() : '';
     if (fullInventoryCategory) fullInventoryCategory.disabled = false;
     if (fullInventorySearch) fullInventorySearch.disabled = false;
     if (fullInventoryMap) {
@@ -1547,6 +1721,36 @@
         });
       }
     }
+    let skillReqOptions = Object.entries(skills || {})
+      .filter(([, s]) => s && s.Combat === true)
+      .map(([key]) => key);
+    if (skillReqOptions.length === 0) {
+      const fromInventory = new Set();
+      for (const cat of Object.keys(byCategory)) {
+        const rows = byCategory[cat];
+        if (rows) rows.forEach((row) => (row.skillReqKeys || []).forEach((k) => fromInventory.add(k)));
+      }
+      skillReqOptions = Array.from(fromInventory);
+    }
+    skillReqOptions.sort((a, b) => {
+      const nameA = (skills[a] && skills[a].Name) ? skills[a].Name.trim() : a;
+      const nameB = (skills[b] && skills[b].Name) ? skills[b].Name.trim() : b;
+      return (nameA || '').localeCompare(nameB || '');
+    });
+    const populateSkillReqDropdown = (sel, currentVal) => {
+      if (!sel) return;
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">Any</option>';
+      skillReqOptions.forEach((key) => {
+        const o = document.createElement('option');
+        o.value = key;
+        o.textContent = (skills[key] && skills[key].Name) ? skills[key].Name.trim() : key;
+        sel.appendChild(o);
+      });
+      if (currentVal && Object.prototype.hasOwnProperty.call(skills || {}, currentVal)) sel.value = currentVal;
+    };
+    populateSkillReqDropdown(fullInventorySkillReq1, selectedSkillReq1);
+    populateSkillReqDropdown(fullInventorySkillReq2, selectedSkillReq2);
     const searchTerm = (fullInventorySearch && fullInventorySearch.value ? fullInventorySearch.value : '')
       .trim().toLowerCase();
     const matchesSearch = (row) => {
@@ -1561,17 +1765,32 @@
       ].join(' ').toLowerCase();
       return text.includes(searchTerm);
     };
-    const categoriesToShow = selectedCategory
-      ? (byCategory[selectedCategory] ? [selectedCategory] : [])
-      : FULL_INVENTORY_CATEGORY_ORDER;
+    const categoriesToShow = selectedSlotFilter
+      ? (byCategory['Equipment'] ? ['Equipment'] : [])
+      : selectedCategory
+        ? (byCategory[selectedCategory] ? [selectedCategory] : [])
+        : FULL_INVENTORY_CATEGORY_ORDER;
     const matchesLocation = (row) => {
       if (selectedMap && !row.locations.some((l) => l.mapName === selectedMap)) return false;
       if (selectedVault && !row.locations.some((l) => l.vaultId === selectedVault)) return false;
       return true;
     };
+    const matchesSkillReqs = (row) => {
+      const keys = row.skillReqKeys || [];
+      if (selectedSkillReq1 && !keys.includes(selectedSkillReq1)) return false;
+      if (selectedSkillReq2 && !keys.includes(selectedSkillReq2)) return false;
+      return true;
+    };
+    const matchesEquipmentSlot = (row, category) => {
+      if (category !== 'Equipment' || !selectedSlotFilter) return true;
+      const slot = row.equipmentSlot != null ? row.equipmentSlot : MOD_SLOT_FILTER_OTHER;
+      return selectedSlotFilter.includes(slot);
+    };
     for (const cat of categoriesToShow) {
       let rows = byCategory[cat];
       if (rows) rows = rows.filter(matchesLocation);
+      if (rows) rows = rows.filter(matchesSkillReqs);
+      if (rows) rows = rows.filter((row) => matchesEquipmentSlot(row, cat));
       if (searchTerm && rows) rows = rows.filter(matchesSearch);
       const section = document.createElement('div');
       section.className = 'full-inventory-section';
@@ -2049,9 +2268,25 @@
         if (fullInventoryCategory) fullInventoryCategory.value = '';
         if (fullInventoryMap) fullInventoryMap.value = '';
         if (fullInventoryVault) fullInventoryVault.value = '';
+        if (fullInventorySkillReq1) fullInventorySkillReq1.value = '';
+        if (fullInventorySkillReq2) fullInventorySkillReq2.value = '';
+        if (fullInventorySlotCheckboxes) {
+          fullInventorySlotCheckboxes.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
+        }
         if (fullInventorySearch) fullInventorySearch.value = '';
         renderFullInventory();
       });
+    }
+    if (fullInventorySlotCheckboxes) {
+      fullInventorySlotCheckboxes.addEventListener('change', (e) => {
+        if (e.target && e.target.matches('input[type="checkbox"]')) renderFullInventory();
+      });
+    }
+    if (fullInventorySkillReq1) {
+      fullInventorySkillReq1.addEventListener('change', renderFullInventory);
+    }
+    if (fullInventorySkillReq2) {
+      fullInventorySkillReq2.addEventListener('change', renderFullInventory);
     }
     if (modFinderSkill1) {
       modFinderSkill1.addEventListener('change', renderModFinderResults);

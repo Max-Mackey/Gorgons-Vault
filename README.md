@@ -25,7 +25,7 @@ See [FEATURES.md](FEATURES.md) for more detail on each feature and future plans.
    - **Items export** (required for Favor Finder and Storage Saver): JSON from the game’s storage/items export. Must include an `Items` array and can include a `Character` name.
    - **Character sheet** (optional): Character sheet JSON for “Current favor with &lt;NPC&gt;” in Favor Finder. The sheet’s `Character` value should match the character from your items export.
 
-3. **Use the tabs** to switch between Favor Finder, Storage Saver, Trip plan, Full Inventory, Mod Finder, and What's this for? No need to re-upload when changing features.
+3. **Use the tabs** — The first tab ("How to use") is a short in-app guide. Then: Favor Finder, Storage Saver, Trip plan, Full Inventory, Mod Finder, and What's this for? No need to re-upload when changing features.
 
 ## Where the game data comes from
 

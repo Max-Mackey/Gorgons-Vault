@@ -1,6 +1,8 @@
 # Project Gorgon Tools — Features
 
-**1.0 scope:** Favor Finder, Storage Saver, Trip plan, Full Inventory (with map/vault filters), Mod Finder, What's this for? (recipe lookup). Accessibility pass and clear-filters UI included. GA4 deferred to follow-up.
+**1.0 scope:** Favor Finder, Storage Saver, Trip plan, Full Inventory (with map/vault filters, Gear Skill 1/2), Mod Finder, What's this for? (recipe lookup). Live CDN version pull, caching, and data version in footer. GA4 deferred to follow-up.
+
+**CDN:** Version is read from `client.projectgorgon.com/fileversion.txt`; data and icons load from `cdn.projectgorgon.com/v{version}/data` and `.../icons`. Responses are cached in `localStorage` (keyed by version). Footer shows "Data: v{version}".
 
 ---
 
@@ -34,12 +36,15 @@ Break out everything the character has into categories (Equipment, Skill Book, R
 
 - **Mod rarity indicator:** Label mods as uncommon, epic, etc. so users know what's "rare"; valuable for endgame.
 - Filter mods by your inventory to complement Full Inventory.
+- **sources_abilities.json / sources_recipes.json:** Show "where to get this" for abilities (Mod Finder) and recipes (What's this for?).
 
 ---
 
 ## What's this for? (item recipe lookup)
 
 **Implemented:** Tab and modal. Search by item name; see which recipes use it (from CDN `recipes.json`). Click item names in Favor Finder, Storage Saver, Full Inventory, or Trip plan to open the modal. "Open in What's this for? tab" to continue in that tab. Clear filters button.
+
+**Planned (for later):** Use CDN `itemuses.json` for extra "More Info" / used-for content when that file carries more than recipe overlap.
 
 ---
 
@@ -73,3 +78,12 @@ Break out everything the character has into categories (Equipment, Skill Book, R
 
 - **Accessibility review:** Skip link, aria-hidden on panels, modal focus restore and trap, tab arrow-key navigation, focus-visible styles, external link labels. Completed.
 - **AI feature pass / Optimization pass:** Optional follow-ups.
+
+---
+
+## Planned / backlog
+
+- **itemuses.json** in What's this for? (see above).
+- **sources_abilities.json / sources_recipes.json** for "where to get" in Mod Finder and What's this for? (see Mod Finder planned).
+- **Mod rarity indicator** in Mod Finder (see above).
+- **Large-inventory performance:** If Full Inventory is slow with very large exports (e.g. 16k+ items), consider virtual scrolling or pagination for the table.

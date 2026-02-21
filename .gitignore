@@ -1,6 +1,9 @@
 # Game export files (reference only; users load their own via the app)
 Character_*.json
 *_items_*.json
+# Exception: example data used by "Load example" buttons in the app
+!Character_Kanbe.json
+!Kanbe_items_2026-02-17-16-53-40Z.json
 
 # Plan / Cursor artifacts (do not commit)
 .cursor/

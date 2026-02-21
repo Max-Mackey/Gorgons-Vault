@@ -133,6 +133,25 @@ section h2 {
   font-size: 0.85rem;
 }
 
+.data-load .example-files-note {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.75rem 0 0.35rem 0;
+}
+
+.data-load .example-files-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.data-load .example-btn {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  min-height: 36px;
+}
+
 .status {
   font-size: 0.9rem;
   color: var(--muted);
@@ -439,6 +458,28 @@ footer p {
   margin: 0 0 1rem 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.intro-panel .intro-content {
+  max-width: 42rem;
+}
+
+.intro-panel .intro-content h2 {
+  margin-top: 0;
+}
+
+.intro-panel .intro-content h3 {
+  margin: 1.5rem 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.intro-panel .intro-tab-list {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.intro-panel .intro-tab-list li {
+  margin-bottom: 0.5rem;
 }
 
 .primary-btn {
@@ -1096,6 +1137,46 @@ footer p {
 }
 
 .mod-finder-slot-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.full-inventory-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.full-inventory-slot-filter {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.full-inventory-slot-filter legend {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.full-inventory-slot-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  min-height: 44px;
+  align-items: center;
+}
+
+.full-inventory-slot-checkbox-label {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
