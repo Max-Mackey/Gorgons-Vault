@@ -1451,6 +1451,12 @@ footer a:hover {
   cursor: pointer;
 }
 
+.quest-turnins-controls label:has(select) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .quest-turnins-controls label span:first-of-type {
   font-size: 0.9rem;
   color: var(--muted);
@@ -1461,6 +1467,22 @@ footer a:hover {
   font-size: inherit;
   color: inherit;
   margin-right: 0;
+}
+
+.quest-turnins-controls select {
+  padding: 0.5rem 0.65rem;
+  min-width: 12rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.quest-turnins-controls select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .quest-turnins-map {
