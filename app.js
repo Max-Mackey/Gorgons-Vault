@@ -640,7 +640,7 @@
     npcSelect.innerHTML = '';
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = areaFriendlyName ? '— Select NPC —' : '— Choose a map first —';
+    opt.textContent = areaFriendlyName ? '— All NPCs on this map —' : '— Choose a map first —';
     npcSelect.appendChild(opt);
     if (!areaFriendlyName) {
       npcSelect.disabled = true;
@@ -743,68 +743,108 @@
 
   /** Favor Finder: match loaded items to selected NPC's Love/Like preferences and render results. */
   function runMatch() {
-    const npcKey = npcSelect.value;
-    if (!npcKey) {
-      resultsSection.hidden = false;
-      npcFavorEl.innerHTML = '';
-      resultsList.innerHTML = '';
-      noMatches.hidden = false;
-      noMatches.textContent = 'Please select a map and an NPC.';
-      return;
-    }
-    const characterNames = Object.keys(charactersItems);
-    const userItems = characterNames.length ? charactersItems[characterNames[0]] : null;
-    if (!userItems || !userItems.length) {
-      resultsSection.hidden = false;
-      npcFavorEl.innerHTML = '';
-      resultsList.innerHTML = '';
-      noMatches.hidden = false;
-      noMatches.textContent = 'No items loaded.';
-      return;
-    }
+  const areaFriendlyName = mapSelect.value;
+
+  if (!areaFriendlyName) {
+    resultsSection.hidden = false;
+    npcFavorEl.innerHTML = '';
+    resultsList.innerHTML = '';
+    noMatches.hidden = false;
+    noMatches.textContent = 'Please select a map.';
+    return;
+  }
+
+  const characterNames = Object.keys(charactersItems);
+  const userItems = characterNames.length ? charactersItems[characterNames[0]] : null;
+
+  if (!userItems || !userItems.length) {
+    resultsSection.hidden = false;
+    npcFavorEl.innerHTML = '';
+    resultsList.innerHTML = '';
+    noMatches.hidden = false;
+    noMatches.textContent = 'No items loaded.';
+    return;
+  }
+
+  const selectedNpcKey = npcSelect.value;
+
+  const npcKeys = selectedNpcKey
+    ? [selectedNpcKey]
+    : giftableNpcs
+        .filter((n) => n.AreaFriendlyName === areaFriendlyName)
+        .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''))
+        .map((n) => n.key);
+
+  if (!npcKeys.length) {
+    resultsSection.hidden = false;
+    npcFavorEl.innerHTML = '';
+    resultsList.innerHTML = '';
+    noMatches.hidden = false;
+    noMatches.textContent = 'No giftable NPCs found for this map.';
+    return;
+  }
+
+  const characterName = characterNames[0];
+  const sheet = charactersSheets[characterName];
+
+  const allNpcResults = [];
+
+  for (const npcKey of npcKeys) {
     const npc = npcs[npcKey];
-    if (!npc || !npc.Preferences) {
-      resultsSection.hidden = false;
-      npcFavorEl.innerHTML = '';
-      resultsList.innerHTML = '';
-      noMatches.hidden = false;
-      noMatches.textContent = 'No preferences for this NPC.';
-      return;
-    }
-    const loveLike = npc.Preferences.filter((p) => p.Desire === 'Love' || p.Desire === 'Like');
+    if (!npc || !npc.Preferences) continue;
+
+    const loveLike = npc.Preferences.filter(
+      (p) => p.Desire === 'Love' || p.Desire === 'Like'
+    );
+
     const matches = [];
+
     for (const row of userItems) {
       const typeId = row.TypeID;
       const cdnItem = getCdnItem(typeId);
       if (!cdnItem || !Array.isArray(cdnItem.Keywords)) continue;
-      const itemKeywordBases = (cdnItem.Keywords || []).map(itemKeywordBase);
+
       let bestDesire = null;
       let bestPrefName = null;
+
       for (const pref of loveLike) {
         if (!hasKeywordMatch(cdnItem.Keywords, pref.Keywords)) continue;
-        // If preference is for an equipment type (e.g. Sword, Shield), require item's primary type to match.
-        const prefBases = (pref.Keywords || []).map(itemKeywordBase);
-        const prefEquipmentTypes = prefBases
-          .map((b) => PREFERENCE_PLURAL_TO_SINGULAR[b] || b)
-          .filter((b) => FAVOR_EQUIPMENT_TYPE_KEYWORDS.has(b));
+
+        const prefBases = (pref.Keywords || [])
+          .map(itemKeywordBase)
+          .map((b) => PREFERENCE_PLURAL_TO_SINGULAR[b] || b);
+
+        const prefEquipmentTypes = prefBases.filter((b) =>
+          FAVOR_EQUIPMENT_TYPE_KEYWORDS.has(b)
+        );
+
         if (prefEquipmentTypes.length > 0) {
           const slot = getEquipmentSlotFromKeywords(cdnItem.Keywords);
           const primaryType = getPrimaryEquipmentType(cdnItem.Keywords, slot);
-          const prefWantsShield = prefEquipmentTypes.some((t) => SHIELD_PREFERENCE_TYPES.has(t));
-          const typeMatches = prefEquipmentTypes.includes(primaryType)
-            || (prefWantsShield && primaryType && SHIELD_PREFERENCE_TYPES.has(primaryType));
+          const prefWantsShield = prefEquipmentTypes.some((t) =>
+            SHIELD_PREFERENCE_TYPES.has(t)
+          );
+          const typeMatches =
+            prefEquipmentTypes.includes(primaryType) ||
+            (prefWantsShield &&
+              primaryType &&
+              SHIELD_PREFERENCE_TYPES.has(primaryType));
+
           if (!primaryType || !typeMatches) continue;
         }
+
         if (pref.Desire === 'Love') {
           bestDesire = 'Love';
           bestPrefName = pref.Name;
           break;
         }
+
         if (pref.Desire === 'Like' && bestDesire !== 'Love') {
           bestDesire = 'Like';
           bestPrefName = pref.Name;
         }
       }
+
       if (bestDesire) {
         matches.push({
           name: row.Name || cdnItem.Name || 'Unknown',
@@ -818,12 +858,22 @@
         });
       }
     }
-    const characterName = characterNames[0];
-    const sheet = charactersSheets[characterName];
-    const npcFavorLevel = sheet && sheet.NPCs && sheet.NPCs[npcKey] ? (sheet.NPCs[npcKey].FavorLevel || null) : null;
-    renderResults(npc.Name || npcKey, npcFavorLevel, matches);
+
+    const npcFavorLevel =
+      sheet && sheet.NPCs && sheet.NPCs[npcKey]
+        ? (sheet.NPCs[npcKey].FavorLevel || null)
+        : null;
+
+    allNpcResults.push({
+      npcKey,
+      npcName: npc.Name || npcKey,
+      favorLevel: npcFavorLevel,
+      matches,
+    });
   }
 
+  renderMultiNpcResults(areaFriendlyName, allNpcResults, !!selectedNpcKey);
+}
   /** Display name for a storage vault (from storagevaults.json). */
   function vaultFriendlyName(vaultId) {
     if (!vaultId) return vaultId;
@@ -1008,6 +1058,160 @@
       resultsList.appendChild(citySection);
     });
   }
+
+  function renderMultiNpcResults(mapName, npcResults, singleNpcMode) {
+  resultsSection.hidden = false;
+  npcFavorEl.innerHTML = '';
+  resultsList.innerHTML = '';
+
+  const withMatches = npcResults.filter((r) => r.matches && r.matches.length > 0);
+
+  noMatches.hidden = withMatches.length > 0;
+
+  if (!withMatches.length) {
+    noMatches.textContent = singleNpcMode
+      ? "No items in your inventory match this NPC's likes or loves."
+      : "No items in your inventory match any NPC on this map.";
+    return;
+  }
+
+  const summary = document.createElement('p');
+  summary.className = 'favor-level';
+  summary.textContent = singleNpcMode
+    ? `Showing results for ${withMatches[0].npcName}.`
+    : `Showing results for all NPCs in ${mapName}.`;
+  npcFavorEl.appendChild(summary);
+
+  withMatches.forEach((npcData) => {
+    const section = document.createElement('div');
+    section.className = 'npc-group';
+
+    const heading = document.createElement('h2');
+    heading.className = 'city-heading';
+
+    const url = npcWikiUrl(npcData.npcName);
+    if (url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.className = 'npc-wiki-link';
+      a.textContent = npcData.npcName;
+      heading.appendChild(a);
+    } else {
+      heading.textContent = npcData.npcName;
+    }
+
+    section.appendChild(heading);
+
+    const favorP = document.createElement('p');
+    favorP.className = 'favor-level' + (npcData.favorLevel ? '' : ' favor-unknown');
+    if (npcData.favorLevel) {
+      appendFavorLine(favorP, npcData.npcName, ': ' + npcData.favorLevel);
+    } else {
+      appendFavorLine(favorP, npcData.npcName, ': load character sheet to see');
+    }
+    section.appendChild(favorP);
+
+    const byVault = {};
+    for (const m of npcData.matches) {
+      const v = m.storageVault;
+      if (!byVault[v]) byVault[v] = { Love: [], Like: [] };
+      byVault[v][m.desire].push(m);
+    }
+
+    const vaultIds = Object.keys(byVault);
+    const byCity = {};
+
+    for (const vaultId of vaultIds) {
+      const city = vaultCityHeading(vaultId) || 'Other';
+      if (!byCity[city]) byCity[city] = [];
+      byCity[city].push(vaultId);
+    }
+
+    const cityOrder = Object.keys(byCity).sort((a, b) => {
+      if (a === 'Any city') return 1;
+      if (b === 'Any city') return -1;
+      return a.localeCompare(b);
+    });
+
+    cityOrder.forEach((cityLabel) => {
+      const citySection = document.createElement('div');
+      citySection.className = 'city-group';
+
+      const cityHeading = document.createElement('h3');
+      cityHeading.className = 'city-heading';
+      cityHeading.textContent = cityLabel;
+      citySection.appendChild(cityHeading);
+
+      const vaultsInCity = byCity[cityLabel].sort((a, b) =>
+        vaultFriendlyName(a).localeCompare(vaultFriendlyName(b))
+      );
+
+      vaultsInCity.forEach((vaultId) => {
+        const block = document.createElement('div');
+        block.className = 'vault-block';
+
+        const title = document.createElement('h4');
+        title.className = 'vault-name';
+
+        const vaultUrl = npcWikiUrl(vaultFriendlyName(vaultId));
+        if (vaultUrl) {
+          const a = document.createElement('a');
+          a.href = vaultUrl;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.className = 'npc-wiki-link';
+          a.textContent = vaultFriendlyName(vaultId);
+          title.appendChild(a);
+        } else {
+          title.textContent = vaultFriendlyName(vaultId);
+        }
+
+        block.appendChild(title);
+
+        const loveList = byVault[vaultId].Love;
+        const likeList = byVault[vaultId].Like;
+
+        if (loveList.length) {
+          const loveSection = document.createElement('div');
+          loveSection.className = 'desire-section love';
+
+          const loveTitle = document.createElement('h5');
+          loveTitle.textContent = 'Love';
+          loveSection.appendChild(loveTitle);
+
+          const ul = document.createElement('ul');
+          loveList.forEach((m) => ul.appendChild(renderItemLi(m)));
+          loveSection.appendChild(ul);
+
+          block.appendChild(loveSection);
+        }
+
+        if (likeList.length) {
+          const likeSection = document.createElement('div');
+          likeSection.className = 'desire-section like';
+
+          const likeTitle = document.createElement('h5');
+          likeTitle.textContent = 'Like';
+          likeSection.appendChild(likeTitle);
+
+          const ul = document.createElement('ul');
+          likeList.forEach((m) => ul.appendChild(renderItemLi(m)));
+          likeSection.appendChild(ul);
+
+          block.appendChild(likeSection);
+        }
+
+        citySection.appendChild(block);
+      });
+
+      section.appendChild(citySection);
+    });
+
+    resultsList.appendChild(section);
+  });
+}
 
   /** Bootstrap: load CDN, wire file inputs and tab/panel switching, populate dropdowns. */
   function init() {
