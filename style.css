@@ -1794,3 +1794,72 @@ body.modal-open {
 .item-used-for-open-tab-link:hover {
   text-decoration: none;
 }
+/* Favor Finder multi-NPC layout override */
+.results-list {
+  display: block;
+}
+
+.results-list .npc-group {
+  display: block;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.results-list .npc-group:last-child {
+  margin-bottom: 0;
+}
+
+.results-list .npc-group > .city-heading,
+.results-list .npc-group > .favor-level {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.results-list .npc-group .city-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  min-height: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.results-list .npc-group .city-group:last-child {
+  margin-bottom: 0;
+}
+
+.results-list .npc-group .vault-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  height: auto;
+  min-height: 0;
+}
+
+.results-list .npc-group .vault-name {
+  margin: 0 0 0.75rem 0;
+}
+
+.results-list .npc-group .desire-section {
+  margin-bottom: 0.75rem;
+}
+
+.results-list .npc-group .desire-section:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 72rem) {
+  .results-list .npc-group .city-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .results-list .npc-group .city-group {
+    grid-template-columns: 1fr;
+  }
+}
