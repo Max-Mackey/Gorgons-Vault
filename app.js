@@ -56,7 +56,7 @@
   const itemsFiles = $('itemsFiles');
   const characterFiles = $('characterFiles');
   const mapSelect = $('mapSelect');
-  const npcSelect = $('npcSelect');
+  const npcCheckboxList = $('npcCheckboxList');
   const dataStatus = $('dataStatus');
   const resultsSection = $('resultsSection');
   const npcFavorEl = $('npcFavor');
@@ -636,26 +636,80 @@
   }
 
   /** Fill NPC dropdown with NPCs in the selected map (area). */
-  function populateNpcDropdown(areaFriendlyName) {
-    npcSelect.innerHTML = '';
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = areaFriendlyName ? '— All NPCs on this map —' : '— Choose a map first —';
-    npcSelect.appendChild(opt);
-    if (!areaFriendlyName) {
-      npcSelect.disabled = true;
-      return;
-    }
-    const filtered = giftableNpcs.filter((n) => n.AreaFriendlyName === areaFriendlyName);
-    filtered.sort((a, b) => (a.Name || '').localeCompare(b.Name || ''));
-    filtered.forEach((n) => {
-      const o = document.createElement('option');
-      o.value = n.key;
-      o.textContent = n.Name || n.key;
-      npcSelect.appendChild(o);
-    });
-    npcSelect.disabled = false;
+  function populateNpcCheckboxes(areaFriendlyName) {
+  npcCheckboxList.innerHTML = '';
+
+  if (!areaFriendlyName) {
+    npcCheckboxList.innerHTML = '<p class="npc-checkbox-placeholder">Choose a map first</p>';
+    return;
   }
+
+  const filtered = giftableNpcs
+    .filter((n) => n.AreaFriendlyName === areaFriendlyName)
+    .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''));
+
+  if (!filtered.length) {
+    npcCheckboxList.innerHTML = '<p class="npc-checkbox-placeholder">No NPCs found for this map</p>';
+    return;
+  }
+
+  const controls = document.createElement('div');
+  controls.className = 'npc-checkbox-controls';
+
+  const selectAllBtn = document.createElement('button');
+  selectAllBtn.type = 'button';
+  selectAllBtn.className = 'secondary-btn';
+  selectAllBtn.textContent = 'Select all';
+  selectAllBtn.addEventListener('click', () => {
+    npcCheckboxList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.checked = true;
+    });
+    runMatch();
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'secondary-btn';
+  clearBtn.textContent = 'Clear';
+  clearBtn.addEventListener('click', () => {
+    npcCheckboxList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.checked = false;
+    });
+    runMatch();
+  });
+
+  controls.appendChild(selectAllBtn);
+  controls.appendChild(clearBtn);
+  npcCheckboxList.appendChild(controls);
+
+  const list = document.createElement('div');
+  list.className = 'npc-checkbox-items';
+
+  filtered.forEach((n) => {
+    const label = document.createElement('label');
+    label.className = 'npc-checkbox-item';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = n.key;
+    cb.addEventListener('change', runMatch);
+
+    const text = document.createElement('span');
+    text.textContent = n.Name || n.key;
+
+    label.appendChild(cb);
+    label.appendChild(text);
+    list.appendChild(label);
+  });
+
+  npcCheckboxList.appendChild(list);
+}
+  function getSelectedNpcKeys() {
+  if (!npcCheckboxList) return [];
+  return Array.from(
+    npcCheckboxList.querySelectorAll('input[type="checkbox"]:checked')
+  ).map((cb) => cb.value);
+}
 
   /** Apply parsed items data (from file or example fetch); update status and run current tab. */
   function applyItemsData(data, sourceLabel) {
@@ -766,14 +820,14 @@
     return;
   }
 
-  const selectedNpcKey = npcSelect.value;
+  const selectedNpcKeys = getSelectedNpcKeys();
 
-  const npcKeys = selectedNpcKey
-    ? [selectedNpcKey]
-    : giftableNpcs
-        .filter((n) => n.AreaFriendlyName === areaFriendlyName)
-        .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''))
-        .map((n) => n.key);
+const npcKeys = selectedNpcKeys.length
+  ? selectedNpcKeys
+  : giftableNpcs
+      .filter((n) => n.AreaFriendlyName === areaFriendlyName)
+      .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''))
+      .map((n) => n.key);
 
   if (!npcKeys.length) {
     resultsSection.hidden = false;
@@ -872,7 +926,7 @@
     });
   }
 
-  renderMultiNpcResults(areaFriendlyName, allNpcResults, !!selectedNpcKey);
+  renderMultiNpcResults(areaFriendlyName, allNpcResults, selectedNpcKeys.length === 1);
 }
   /** Display name for a storage vault (from storagevaults.json). */
   function vaultFriendlyName(vaultId) {
@@ -1222,8 +1276,7 @@
         const versionEl = document.getElementById('cdnVersion');
         if (versionEl) versionEl.textContent = 'Data: v' + cdnVersion;
         populateMapDropdown();
-        npcSelect.innerHTML = '<option value="">— Choose a map first —</option>';
-        npcSelect.disabled = true;
+        npcCheckboxList.innerHTML = '<p class="npc-checkbox-placeholder">Choose a map first</p>';
         cdnError.hidden = true;
         populateModFinderSkillDropdowns();
         buildModFinderSlotFilter();
@@ -1238,11 +1291,9 @@
       });
 
     mapSelect.addEventListener('change', () => {
-      populateNpcDropdown(mapSelect.value);
-      runMatch();
-    });
-
-    npcSelect.addEventListener('change', runMatch);
+  populateNpcCheckboxes(mapSelect.value);
+  runMatch();
+});
     itemsFiles.addEventListener('change', onItemsFilesChange);
     characterFiles.addEventListener('change', onCharacterFilesChange);
 
